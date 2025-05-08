@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Employees</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+    <div id="navbar-placeholder"></div>
+
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="mb-1">Employee List</h2>
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
+                + Add Employee
+            </button>
+        </div>
+
+        <table class="table table-bordered table-hover bg-white shadow-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Full Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Department</th>
+                    <th style="width: 180px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="employee-table">
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Edit Employee Modal -->
+    <div class="modal fade" id="editEmployeeModal" tabindex="-1" aria-labelledby="editEmployeeLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="edit-employee-form">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editEmployeeLabel">Edit Employee</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="edit-employee-id">
+                        <div class="mb-3">
+                            <label class="form-label">First Name</label>
+                            <input type="text" class="form-control" id="edit-firstName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Last Name</label>
+                            <input type="text" class="form-control" id="edit-lastName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="edit-email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phone</label>
+                            <input type="text" class="form-control" id="edit-phone" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Department</label>
+                            <select id="edit-departmentId" class="form-select" required>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Save</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Employee Modal -->
+    <div class="modal fade" id="addEmployeeModal" tabindex="-1" aria-labelledby="addEmployeeLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="add-employee-form">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addEmployeeLabel">Add New Employee</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">First Name</label>
+                            <input type="text" class="form-control" id="add-firstName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Last Name</label>
+                            <input type="text" class="form-control" id="add-lastName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="add-email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phone</label>
+                            <input type="text" class="form-control" id="add-phone" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Department</label>
+                            <select id="add-departmentId" class="form-select" required></select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Save</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        if (!localStorage.getItem('token')) {
+            window.location.href = 'login.html';
+        }
+
+        let allDepartments = [];
+
+        function loadEmployees() {
+            $('#employee-table').empty();
+
+            $.ajax({
+                url: 'http://localhost:5079/api/employee',
+                method: 'GET',
+                headers: {
+                    Authorization: 'Bearer ' + localStorage.getItem('token')
+                },
+                success: function (employees) {
+                    employees.forEach(emp => {
+                        const fullName = `${emp.firstName} ${emp.lastName}`;
+                        const deptName = emp.departmentName || '-';
+
+                        $('#employee-table').append(`
+              <tr>
+                <td>${emp.id}</td>
+                <td>${fullName}</td>
+                <td>${emp.email}</td>
+                <td>${emp.phone}</td>
+                <td>${deptName}</td>
+                <td>
+                  <button class="btn btn-sm btn-warning me-2" onclick="editEmployee(${emp.id})">Edit</button>
+                  <button class="btn btn-sm btn-danger" onclick="deleteEmployee(${emp.id})">Delete</button>
+                </td>
+              </tr>
+            `);
+                    });
+                },
+                error: function () {
+                    alert('Failed to load employees.');
+                }
+            });
+        }
+
+        function loadDepartmentsDropdown(selectedId) {
+            $.ajax({
+                url: 'http://localhost:5079/api/department',
+                method: 'GET',
+                headers: {
+                    Authorization: 'Bearer ' + localStorage.getItem('token')
+                },
+                success: function (departments) {
+                    allDepartments = departments;
+                    const select = $('#edit-departmentId');
+                    select.empty();
+                    departments.forEach(dep => {
+                        const selected = dep.id == selectedId ? 'selected' : '';
+                        select.append(`<option value="${dep.id}" ${selected}>${dep.name}</option>`);
+                    });
+                }
+            });
+        }
+
+        function loadDepartmentsForAddModal() {
+            $.ajax({
+                url: 'http://localhost:5079/api/department',
+                method: 'GET',
+                headers: {
+                    Authorization: 'Bearer ' + localStorage.getItem('token')
+                },
+                success: function (departments) {
+                    const select = $('#add-departmentId');
+                    select.empty();
+                    departments.forEach(dep => {
+                        select.append(`<option value="${dep.id}">${dep.name}</option>`);
+                    });
+                }
+            });
+        }
+
+        $('#addEmployeeModal').on('shown.bs.modal', function () {
+            loadDepartmentsForAddModal();
+        });
+
+        $('#add-employee-form').on('submit', function (e) {
+            e.preventDefault();
+
+            const newEmployee = {
+                firstName: $('#add-firstName').val(),
+                lastName: $('#add-lastName').val(),
+                email: $('#add-email').val(),
+                phone: $('#add-phone').val(),
+                departmentId: parseInt($('#add-departmentId').val())
+            };
+
+            $.ajax({
+                url: 'http://localhost:5079/api/employee',
+                method: 'POST',
+                headers: {
+                    Authorization: 'Bearer ' + localStorage.getItem('token')
+                },
+                contentType: 'application/json',
+                data: JSON.stringify(newEmployee),
+                success: function () {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addEmployeeModal'));
+                    modal.hide();
+                    $('#add-employee-form')[0].reset();
+                    loadEmployees();
+                },
+                error: function () {
+                    alert('Failed to add employee.');
+                }
+            });
+        });
+
+        function editEmployee(id) {
+            $.ajax({
+                url: `http://localhost:5079/api/employee/${id}`,
+                method: 'GET',
+                headers: {
+                    Authorization: 'Bearer ' + localStorage.getItem('token')
+                },
+                success: function (emp) {
+                    $('#edit-employee-id').val(emp.id);
+                    $('#edit-firstName').val(emp.firstName);
+                    $('#edit-lastName').val(emp.lastName);
+                    $('#edit-email').val(emp.email);
+                    $('#edit-phone').val(emp.phone);
+
+                    loadDepartmentsDropdown(emp.departmentId);
+
+                    const modal = new bootstrap.Modal(document.getElementById('editEmployeeModal'));
+                    modal.show();
+                },
+                error: function () {
+                    alert('Failed to fetch employee details.');
+                }
+            });
+        }
+
+        $('#edit-employee-form').on('submit', function (e) {
+            e.preventDefault();
+
+            const id = $('#edit-employee-id').val();
+            const updatedData = {
+                firstName: $('#edit-firstName').val(),
+                lastName: $('#edit-lastName').val(),
+                email: $('#edit-email').val(),
+                phone: $('#edit-phone').val(),
+                departmentId: parseInt($('#edit-departmentId').val())
+            };
+
+            $.ajax({
+                url: `http://localhost:5079/api/employee/${id}`,
+                method: 'PUT', headers: {
+                    Authorization: 'Bearer ' + localStorage.getItem('token')
+                },
+                contentType: 'application/json',
+                data: JSON.stringify(updatedData),
+                success: function () {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editEmployeeModal'));
+                    modal.hide();
+                    loadEmployees();
+                },
+                error: function () {
+                    alert('Failed to update employee.');
+                }
+            });
+        });
+
+        function deleteEmployee(id) {
+            if (confirm('Are you sure you want to delete this employee?')) {
+                $.ajax({
+                    url: `http://localhost:5079/api/employee/${id}`,
+                    method: 'DELETE',
+                    headers: {
+                        Authorization: 'Bearer ' + localStorage.getItem('token')
+                    },
+                    success: function () {
+                        loadEmployees();
+                    },
+                    error: function () {
+                        alert('Failed to delete employee.');
+                    }
+                });
+            }
+        }
+
+        $(document).ready(function () {
+            loadEmployees();
+        });
+
+        $(function () {
+            $('#navbar-placeholder').load('navbar.html');
+        });
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+    </script>
+
+</body>
+
+</html>
